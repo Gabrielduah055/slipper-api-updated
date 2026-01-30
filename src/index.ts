@@ -6,6 +6,7 @@ import connetDB from "./config/mongodb";
 import adminRouter from "./route/adminRouter";
 import productRouter from "./route/productRouter";
 import customerRouter from "./route/customerRouter";
+import orderRouter from "./route/orderRouter";
 import path from "path";
 import fs from 'fs';
 
@@ -36,6 +37,7 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/admin", adminRouter);
 app.use("/api/product", productRouter);
 app.use("/api/customers", customerRouter);
+app.use("/api/orders", orderRouter);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
