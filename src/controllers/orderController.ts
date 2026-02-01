@@ -4,7 +4,6 @@ import Customer from "../models/CustomerSchema";
 import Product from "../models/ProductSchema";
 import { ICustomer } from "../interface/customerInterface";
 import { IProduct } from "../interface/productInterface";
-import { sendOrderNotificationEmail } from "../utils/emailService";
 
 // Create new order
 export const createOrder: RequestHandler = async (
@@ -98,21 +97,6 @@ export const createOrder: RequestHandler = async (
             $inc: { productStock: -item.quantity }
         });
     }
-
-    // 5. Send Notifications
-    // Real-time notification via Socket.io
-    const io = req.app.get('io');
-    if (io) {
-        io.emit('newOrder', {
-            orderId: savedOrder._id,
-            amount: savedOrder.totalAmount,
-            customerName: `${customer.firstName} ${customer.lastName}`,
-            createdAt: savedOrder.createdAt
-        });
-    }
-
-    // Email notification
-    await sendOrderNotificationEmail(savedOrder, customer);
 
     res.status(201).json({
         message: "Order placed successfully",
