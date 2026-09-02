@@ -19,7 +19,7 @@ For a local `.env`, store the private key on one line with escaped newlines, for
 
 Do not download a service-account JSON file into this repository. Service-account files and real `.env` files must never be committed.
 
-Production startup fails with a clear error when any Firebase Admin credential variable is missing. Tests mock token verification and need no Firebase credentials.
+Every normal startup, including local development and production, fails with a clear error when any required authentication variable is missing. Tests inject a mock Firebase verifier into the real mounted middleware and need no Firebase credentials.
 
 ## Route access
 
@@ -65,6 +65,7 @@ Use this test matrix:
 | Case | Request | Expected |
 | --- | --- | --- |
 | No token | Protected endpoint without `Authorization` | `401` |
+| Malformed scheme | `Authorization: Token abc` | `401` |
 | Invalid token | `Authorization: Bearer invalid-token` | `401` |
 | Approved Firebase user | Valid token whose email is in `ADMIN_EMAILS` | Endpoint success |
 | Unapproved Firebase user | Valid token whose email is absent from `ADMIN_EMAILS` | `403` |
@@ -75,4 +76,20 @@ Do not commit Postman values containing administrator passwords, API keys, or ID
 
 ## Existing administrator documents
 
-The application schema no longer stores or verifies administrator passwords. This change does not mutate production data. If old `admins` documents contain a `password` field, an operator may later remove only that field with a reviewed MongoDB `$unset` migration after backing up and confirming the target database; no migration is run automatically by this PR.
+The application schema no longer stores or verifies administrator passwords. The migration is never run during application startup and uses MongoDB `$unset` to remove only the legacy `password` field.
+
+Back up the intended database first. Confirm `MONGODB_URI` targets the correct environment, test the migration against that intended environment, and run the dry-run before applying it. Neither command prints password values.
+
+Dry-run:
+
+```shell
+npm run migration:admin-passwords:dry-run
+```
+
+Apply only after reviewing the dry-run count and backup:
+
+```shell
+npm run migration:admin-passwords:apply -- --confirm=REMOVE_LEGACY_ADMIN_PASSWORDS
+```
+
+The confirmation suffix is mandatory. The migration does not delete administrator documents or change usernames, emails, roles, timestamps, or other fields.

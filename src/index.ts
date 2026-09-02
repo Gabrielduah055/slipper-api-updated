@@ -1,18 +1,21 @@
-import dotenv from "dotenv";
-import app from "./app";
+import "dotenv/config";
+import { createApp } from "./app";
 import { validateAuthenticationEnvironment } from "./config/firebaseAdmin";
 import connetDB from "./config/mongodb";
 
-dotenv.config();
-
 const port = process.env.PORT || 5000;
 
-if (process.env.NODE_ENV === "production") {
+const startServer = async (): Promise<void> => {
   validateAuthenticationEnvironment();
-}
+  await connetDB();
 
-void connetDB();
+  createApp().listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+};
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+void startServer().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : "Server startup failed";
+  console.error(message);
+  process.exitCode = 1;
 });

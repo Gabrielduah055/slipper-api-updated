@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import {
   getAllProducts,
   getProductById,
@@ -7,45 +7,46 @@ import {
   deleteProduct,
   getProductCategories,
 } from "../controllers/productController";
-import {
-  authenticateFirebase,
-  authorizeAdministrator,
-} from "../middlewares/auth";
 import { upload } from "../middlewares/upload";
 
-const productRouter = Router();
+export const createProductRouter = (
+  authenticateFirebase: RequestHandler,
+  authorizeAdministrator: RequestHandler
+): Router => {
+  const productRouter = Router();
 
-//public;
-productRouter.get("/categories", getProductCategories);
-productRouter.get("/", getAllProducts);
-productRouter.get("/:id", getProductById);
+  // Public storefront routes.
+  productRouter.get("/categories", getProductCategories);
+  productRouter.get("/", getAllProducts);
+  productRouter.get("/:id", getProductById);
 
-//protected admin only
-productRouter.post(
-  "/",
-  authenticateFirebase,
-  authorizeAdministrator,
-  upload.fields([
-    { name: "productImage", maxCount: 1 },
-    { name: "productThumbnailImages", maxCount: 5 },
-  ]),
-  createProduct
-);
-productRouter.put(
-  "/:id",
-  authenticateFirebase,
-  authorizeAdministrator,
-  upload.fields([
-    { name: "productImage", maxCount: 1 },
-    { name: "productThumbnailImages", maxCount: 5 },
-  ]),
-  updateProduct
-);
-productRouter.delete(
-  "/:id",
-  authenticateFirebase,
-  authorizeAdministrator,
-  deleteProduct
-);
+  // Administrator-only product mutations.
+  productRouter.post(
+    "/",
+    authenticateFirebase,
+    authorizeAdministrator,
+    upload.fields([
+      { name: "productImage", maxCount: 1 },
+      { name: "productThumbnailImages", maxCount: 5 },
+    ]),
+    createProduct
+  );
+  productRouter.put(
+    "/:id",
+    authenticateFirebase,
+    authorizeAdministrator,
+    upload.fields([
+      { name: "productImage", maxCount: 1 },
+      { name: "productThumbnailImages", maxCount: 5 },
+    ]),
+    updateProduct
+  );
+  productRouter.delete(
+    "/:id",
+    authenticateFirebase,
+    authorizeAdministrator,
+    deleteProduct
+  );
 
-export default productRouter;
+  return productRouter;
+};

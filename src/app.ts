@@ -3,29 +3,53 @@ import cors from "cors";
 import express, { type Express, type Request, type Response } from "express";
 import fs from "fs";
 import path from "path";
-import customerRouter from "./route/customerRouter";
-import orderRouter from "./route/orderRouter";
-import productRouter from "./route/productRouter";
+import {
+  createAdministratorAuthorization,
+  createFirebaseAuthentication,
+  type VerifyIdToken,
+} from "./middlewares/auth";
+import { createCustomerRouter } from "./route/customerRouter";
+import { createOrderRouter } from "./route/orderRouter";
+import { createProductRouter } from "./route/productRouter";
 
-const app: Express = express();
-const uploadDir = path.join(process.cwd(), "uploads");
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+export interface AppDependencies {
+  verifyIdToken?: VerifyIdToken;
 }
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
-app.use(cookieParser());
-app.use(cors({ credentials: true }));
-app.use("/uploads", express.static(uploadDir));
+export const createApp = (dependencies: AppDependencies = {}): Express => {
+  const app: Express = express();
+  const uploadDir = path.join(process.cwd(), "uploads");
+  const authenticateFirebase = createFirebaseAuthentication(
+    dependencies.verifyIdToken
+  );
+  const authorizeAdministrator = createAdministratorAuthorization();
 
-app.get("/", (_req: Request, res: Response) => {
-  res.send("Hello World!");
-});
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir);
+  }
 
-app.use("/api/product", productRouter);
-app.use("/api/customers", customerRouter);
-app.use("/api/orders", orderRouter);
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ limit: "10mb", extended: true }));
+  app.use(cookieParser());
+  app.use(cors({ credentials: true }));
+  app.use("/uploads", express.static(uploadDir));
 
-export default app;
+  app.get("/", (_req: Request, res: Response) => {
+    res.send("Hello World!");
+  });
+
+  app.use(
+    "/api/product",
+    createProductRouter(authenticateFirebase, authorizeAdministrator)
+  );
+  app.use(
+    "/api/customers",
+    createCustomerRouter(authenticateFirebase, authorizeAdministrator)
+  );
+  app.use(
+    "/api/orders",
+    createOrderRouter(authenticateFirebase, authorizeAdministrator)
+  );
+
+  return app;
+};

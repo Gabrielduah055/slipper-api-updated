@@ -1,8 +1,11 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import type { DecodedIdToken } from "firebase-admin/auth";
-import { getFirebaseAuth } from "../config/firebaseAdmin";
+import {
+  AuthenticationConfigurationError,
+  getFirebaseAuth,
+} from "../config/firebaseAdmin";
 
-type VerifyIdToken = (token: string) => Promise<DecodedIdToken>;
+export type VerifyIdToken = (token: string) => Promise<DecodedIdToken>;
 type AdminEmailsProvider = () => string | undefined;
 
 const unauthorized = (res: Response, message: string): void => {
@@ -10,8 +13,11 @@ const unauthorized = (res: Response, message: string): void => {
 };
 
 export const createFirebaseAuthentication = (
-  verifyIdToken: VerifyIdToken = (token) => getFirebaseAuth().verifyIdToken(token)
+  verifyIdToken?: VerifyIdToken
 ): RequestHandler => {
+  const verifyToken = verifyIdToken ?? ((token: string) =>
+    getFirebaseAuth().verifyIdToken(token));
+
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const authorization = req.headers.authorization;
     const match = typeof authorization === "string"
@@ -31,8 +37,12 @@ export const createFirebaseAuthentication = (
 
     let firebaseUser: DecodedIdToken;
     try {
-      firebaseUser = await verifyIdToken(token);
-    } catch {
+      firebaseUser = await verifyToken(token);
+    } catch (error) {
+      if (error instanceof AuthenticationConfigurationError) {
+        next(error);
+        return;
+      }
       unauthorized(res, "Firebase ID token is invalid or expired");
       return;
     }
@@ -64,6 +74,3 @@ export const createAdministratorAuthorization = (
     next();
   };
 };
-
-export const authenticateFirebase = createFirebaseAuthentication();
-export const authorizeAdministrator = createAdministratorAuthorization();

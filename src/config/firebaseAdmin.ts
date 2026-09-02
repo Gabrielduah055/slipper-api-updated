@@ -1,35 +1,44 @@
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 
+export class AuthenticationConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthenticationConfigurationError";
+  }
+}
+
 const REQUIRED_FIREBASE_VARIABLES = [
   "FIREBASE_PROJECT_ID",
   "FIREBASE_CLIENT_EMAIL",
   "FIREBASE_PRIVATE_KEY",
 ] as const;
 
-const missingFirebaseVariables = (): string[] =>
-  REQUIRED_FIREBASE_VARIABLES.filter((name) => !process.env[name]?.trim());
+const REQUIRED_AUTHENTICATION_VARIABLES = [
+  ...REQUIRED_FIREBASE_VARIABLES,
+  "ADMIN_EMAILS",
+] as const;
+
+const missingVariables = (names: readonly string[]): string[] =>
+  names.filter((name) => !process.env[name]?.trim());
 
 export const validateFirebaseEnvironment = (): void => {
-  const missing = missingFirebaseVariables();
+  const missing = missingVariables(REQUIRED_FIREBASE_VARIABLES);
 
   if (missing.length > 0) {
-    throw new Error(
+    throw new AuthenticationConfigurationError(
       `Missing required Firebase Admin environment variables: ${missing.join(", ")}`
     );
   }
 };
 
 export const validateAuthenticationEnvironment = (): void => {
-  validateFirebaseEnvironment();
+  const missing = missingVariables(REQUIRED_AUTHENTICATION_VARIABLES);
 
-  const administratorEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim())
-    .filter(Boolean);
-
-  if (administratorEmails.length === 0) {
-    throw new Error("Missing required administrator environment variable: ADMIN_EMAILS");
+  if (missing.length > 0) {
+    throw new AuthenticationConfigurationError(
+      `Missing required authentication environment variables: ${missing.join(", ")}`
+    );
   }
 };
 
@@ -42,7 +51,7 @@ const getFirebaseApp = (): App => {
   validateFirebaseEnvironment();
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
   if (!privateKey) {
-    throw new Error("FIREBASE_PRIVATE_KEY is required");
+    throw new AuthenticationConfigurationError("FIREBASE_PRIVATE_KEY is required");
   }
 
   return initializeApp({
