@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import {
   getAllCustomers,
   getCustomerById,
@@ -6,17 +6,21 @@ import {
   updateCustomer,
   deleteCustomer,
 } from "../controllers/customerController";
-import { auth } from "../middlewares/auth";
 
-const customerRouter = Router();
+export const createCustomerRouter = (
+  authenticateFirebase: RequestHandler,
+  authorizeAdministrator: RequestHandler
+): Router => {
+  const customerRouter = Router();
 
-// Public routes (or protected depending on requirements, making them public for read, protected for write for now, or all protected. Let's make read public and write protected like products)
-customerRouter.get("/", getAllCustomers);
-customerRouter.get("/:id", getCustomerById);
+  // Customer records contain personal information and are administrator-only.
+  customerRouter.get("/", authenticateFirebase, authorizeAdministrator, getAllCustomers);
+  customerRouter.get("/:id", authenticateFirebase, authorizeAdministrator, getCustomerById);
 
-// Protected routes
-customerRouter.post("/", auth, createCustomer);
-customerRouter.put("/:id", auth, updateCustomer);
-customerRouter.delete("/:id", auth, deleteCustomer);
+  // Customers may register without an administrator session.
+  customerRouter.post("/", createCustomer);
+  customerRouter.put("/:id", authenticateFirebase, authorizeAdministrator, updateCustomer);
+  customerRouter.delete("/:id", authenticateFirebase, authorizeAdministrator, deleteCustomer);
 
-export default customerRouter;
+  return customerRouter;
+};

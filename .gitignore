@@ -6,6 +6,9 @@ dist/
 
 # Environment variables
 .env
+*service-account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
 
 # Logs
 logs

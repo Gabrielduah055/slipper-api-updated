@@ -1,20 +1,29 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import {
   createOrder,
   getAllOrders,
   getOrderById,
   updateOrderStatus,
 } from "../controllers/orderController";
-import { auth } from "../middlewares/auth";
 
-const orderRouter = Router();
+export const createOrderRouter = (
+  authenticateFirebase: RequestHandler,
+  authorizeAdministrator: RequestHandler
+): Router => {
+  const orderRouter = Router();
 
-// Public route to place an order
-orderRouter.post("/", createOrder);
+  // Public route to place an order.
+  orderRouter.post("/", createOrder);
 
-// Protected routes (Admin only)
-orderRouter.get("/", auth, getAllOrders);
-orderRouter.get("/:id", auth, getOrderById);
-orderRouter.put("/:id/status", auth, updateOrderStatus);
+  // Administrator-only order management.
+  orderRouter.get("/", authenticateFirebase, authorizeAdministrator, getAllOrders);
+  orderRouter.get("/:id", authenticateFirebase, authorizeAdministrator, getOrderById);
+  orderRouter.put(
+    "/:id/status",
+    authenticateFirebase,
+    authorizeAdministrator,
+    updateOrderStatus
+  );
 
-export default orderRouter;
+  return orderRouter;
+};
