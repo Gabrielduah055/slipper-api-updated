@@ -5,7 +5,10 @@ import {
   getOrderById,
   updateOrderStatus,
 } from "../controllers/orderController";
-import { auth } from "../middlewares/auth";
+import {
+  authenticateFirebase,
+  authorizeAdministrator,
+} from "../middlewares/auth";
 
 const orderRouter = Router();
 
@@ -13,8 +16,13 @@ const orderRouter = Router();
 orderRouter.post("/", createOrder);
 
 // Protected routes (Admin only)
-orderRouter.get("/", auth, getAllOrders);
-orderRouter.get("/:id", auth, getOrderById);
-orderRouter.put("/:id/status", auth, updateOrderStatus);
+orderRouter.get("/", authenticateFirebase, authorizeAdministrator, getAllOrders);
+orderRouter.get("/:id", authenticateFirebase, authorizeAdministrator, getOrderById);
+orderRouter.put(
+  "/:id/status",
+  authenticateFirebase,
+  authorizeAdministrator,
+  updateOrderStatus
+);
 
 export default orderRouter;
